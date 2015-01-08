@@ -2,6 +2,6 @@
     "browser": true,
     "undef": true,
     "unused": "vars",
-    "predef": ["define", "requirejs"],
+    "predef": ["define", "requirejs", "AudioContext"],
     "strict": true
 }
