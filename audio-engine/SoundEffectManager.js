@@ -17,8 +17,12 @@ define(['audio-engine/SoundEffect'], function(SoundEffect) {
         toLoad: null,
         sounds: null,
         
-        load: function(name, url) {
-            this.toLoad.push({ name: name, url: url });
+        sound: function(name) {
+            return this.sounds[name];
+        },
+        
+        load: function(name, url, options) {
+            this.toLoad.push({ name: name, url: url, options: options });
             
             if(!this.loading) {
                 this.loadNext();
@@ -39,11 +43,14 @@ define(['audio-engine/SoundEffect'], function(SoundEffect) {
                 if(xhr.readyState == 4) {
                     this.audioEngine.context.decodeAudioData(xhr.response,
                     (function(buffer) {
+                        var opts = {};
+                        for(var p in toLoad.options) {
+                            opts[p] = toLoad.options[p];
+                        }
+                        opts.buffer = buffer;
+                        opts.url = toLoad.url;
                         
-                        var sfx = new SoundEffect(this, {
-                            buffer: buffer,
-                            url: toLoad.url
-                        });
+                        var sfx = new SoundEffect(this, opts);
                         
                         onComplete(sfx);
                         

@@ -17,12 +17,17 @@ define(['audio-engine/Channel', 'audio-engine/SoundEffectManager'], function(Cha
         this.masterGain.connect(this.context.destination);
         
         this.sfxManager = new SoundEffectManager(this);
+        this.defaultChannel = new Channel(this, {
+            name: "__default",
+            maxInstances: 100
+        });
     };
     
     AudioEngine.prototype = {
         context: null,
         masterGain: null,
         channels: null,
+        defaultChannel: null,
         sfxManager: null,
         
         createChannel: function(options) {
@@ -31,6 +36,15 @@ define(['audio-engine/Channel', 'audio-engine/SoundEffectManager'], function(Cha
             this.channels[chan.name] = chan;
             
             return chan;
+        },
+        
+        channel: function(name) {
+            if(!name) return this.defaultChannel;
+            return this.channels[name];
+        },
+        
+        sound: function(name) {
+            return this.sfxManager.sound(name);
         }
     };
     
