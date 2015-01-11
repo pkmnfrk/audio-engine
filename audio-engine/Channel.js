@@ -55,7 +55,11 @@ define([], function() {
             
             while(this.maxInstances > -1 && this.playing.length > this.maxInstances) {
                 var killed = this.playing.shift();
-                killed.stop();
+                
+                try {
+                    killed.stop();
+                } catch(e) {}
+                
                 if(killed.whenComplete) killed.whenComplete();
             }
             
