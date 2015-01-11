@@ -1,9 +1,11 @@
-define(['audio-engine/SoundEffect'], function(SoundEffect) {
+define(['audio-engine/SoundEffect', 'emitter'], function(SoundEffect, emitter) {
     "use strict";
     
     /// @class 
     var SoundEffectManager = function(audioEngine, options) {
         options = options || {};
+        
+        emitter(this);
         
         this.audioEngine = audioEngine;
         
@@ -13,7 +15,8 @@ define(['audio-engine/SoundEffect'], function(SoundEffect) {
     
     SoundEffectManager.prototype = {
         audioEngine: null,
-        loading: false,
+        loading: 0,
+        maxLoading: 2,
         toLoad: null,
         sounds: null,
         
@@ -22,49 +25,36 @@ define(['audio-engine/SoundEffect'], function(SoundEffect) {
         },
         
         load: function(name, url, options) {
+            
+            if(this.audioEngine.loadingManager) {
+                this.audioEngine.loadingManager.load(url, 'arraybuffer', null, function(data, xhr) {
+                    this.handleLoadedBuffer(data, name, url, options);
+                }, this);
+                
+                return;
+            }
             this.toLoad.push({ name: name, url: url, options: options });
             
-            if(!this.loading) {
-                this.loadNext();
-            }
+            this.emit('loadingstart', { number: this.toLoad.length });
+            
+            this.loadNext();
         },
         
         loadNext: function() {
-            if(this.loading) return;
+            if(this.loading >= this.maxLoading) return;
             
             if(!this.toLoad.length) return;
             
-            this.loading = true;
+            this.loading++;
             
             var toLoad = this.toLoad.shift();
             
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = (function() {
                 if(xhr.readyState == 4) {
-                    this.audioEngine.context.decodeAudioData(xhr.response,
-                    (function(buffer) {
-                        var opts = {};
-                        for(var p in toLoad.options) {
-                            opts[p] = toLoad.options[p];
-                        }
-                        opts.buffer = buffer;
-                        opts.url = toLoad.url;
-                        
-                        var sfx = new SoundEffect(this, opts);
-                        
-                        onComplete(sfx);
-                        
-                    }).bind(this),
-                    (function(e) {
-                        var sfx = new SoundEffect(this, {
-                            error: e || new Error("There was an error decoding the sound effect"),
-                            url: toLoad.url
-                        });
-                        
-                        //hmm, this blows
-                        onComplete(sfx);
-                        
-                    }).bind(this));
+                    this.handleLoadedBuffer(xhr.response, toLoad.name, toLoad.url, toLoad.options, function() {
+                        this.onLoadedSfx();
+                    });
                 }
                 
             }).bind(this);
@@ -72,12 +62,44 @@ define(['audio-engine/SoundEffect'], function(SoundEffect) {
             xhr.open("GET", toLoad.url, true);
             xhr.send();
             
-            var onComplete = (function(sfx) {
-                this.loading = false;
-                this.sounds[toLoad.name] = sfx;
-                this.loadNext();
-            }).bind(this);
+        },
+        handleLoadedBuffer: function(data, name, url, options, cb) {
+            this.audioEngine.context.decodeAudioData(data,
+            (function(buffer) {
+                var opts = {};
+                for(var p in options) {
+                    opts[p] = options[p];
+                }
+                opts.buffer = buffer;
+                opts.url = url;
+
+                var sfx = new SoundEffect(this, opts);
+                this.sounds[name] = sfx;
+                if(cb) cb.call(this);
+
+            }).bind(this),
+            (function(e) {
+                var sfx = new SoundEffect(this, {
+                    error: e || new Error("There was an error decoding the sound effect"),
+                    url: url
+                });
+
+                this.sounds[name] = sfx;
+                //hmm, this blows
+                if(cb) cb.call(this);
+
+            }).bind(this));
+        },
+        
+        onLoadedSfx: function() {
+            this.loading--;
+            if(this.toLoad.length) {
+                this.emit('loadingprogress', { number: this.toLoad.length });
+            } else {
+                this.emit('loadingend', { });
+            }
             
+            this.loadNext();
         }
     };
     
