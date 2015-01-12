@@ -63,7 +63,7 @@ define([], function() {
                 if(killed.whenComplete) killed.whenComplete();
             }
             
-            source.start();
+            source.start(0);
         },
         
         stopAll: function() {
