@@ -7,16 +7,19 @@ function(emitter, Channel, SoundEffectManager) {
         
         emitter(this);
         
+        var AC = window.AudioContext || window.webkitAudioContext;
+        
+        if(!AC) {
+            window.console.error("AudioContext is not supported");
+            this.supported = false;
+            return;
+        }
+        
         if(options.loadingManager) {
             this.loadingManager = options.loadingManager;
         }
         
         this.channels = {};
-        
-        var AC = window.AudioContext || window.webkitAudioContext;
-        
-        if(!AudioContext)
-            throw new Error("AudioContext is not supported");
         
         this.context = new AC();
         
@@ -38,6 +41,7 @@ function(emitter, Channel, SoundEffectManager) {
     };
     
     AudioEngine.prototype = {
+        supported: true,
         context: null,
         masterGain: null,
         channels: null,
@@ -57,6 +61,7 @@ function(emitter, Channel, SoundEffectManager) {
         },
         
         createChannel: function(options) {
+            if(!this.supported) return null;
             var chan = new Channel(this, options);
             
             this.channels[chan.name] = chan;
@@ -65,11 +70,13 @@ function(emitter, Channel, SoundEffectManager) {
         },
         
         channel: function(name) {
+            if(!this.supported) return {play:function(a,b){if(b){setTimeout(b,0);}}};
             if(!name) return this.defaultChannel;
             return this.channels[name];
         },
         
         sound: function(name) {
+            if(!this.supported) return {play:function(){}};
             return this.sfxManager.sound(name);
         }
     };
